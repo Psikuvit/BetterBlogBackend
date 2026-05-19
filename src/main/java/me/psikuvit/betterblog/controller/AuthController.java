@@ -1,11 +1,14 @@
 package me.psikuvit.betterblog.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import me.psikuvit.betterblog.config.RateLimiterService;
 import me.psikuvit.betterblog.dto.AuthResponse;
 import me.psikuvit.betterblog.dto.LoginRequest;
 import me.psikuvit.betterblog.dto.RegisterRequest;
 import me.psikuvit.betterblog.dto.UserDto;
+import me.psikuvit.betterblog.exception.RateLimitExceededException;
 import me.psikuvit.betterblog.service.AuthService;
 import me.psikuvit.betterblog.service.JwtService;
 import org.springframework.http.HttpStatus;
@@ -23,13 +26,24 @@ public class AuthController {
 
     private final AuthService authService;
     private final JwtService jwtService;
+    private final RateLimiterService rateLimiterService;
 
     /**
      * Register a new user
      * POST /auth/register
      */
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
+    public ResponseEntity<AuthResponse> register(
+            @Valid @RequestBody RegisterRequest request,
+            HttpServletRequest httpRequest) {
+        String clientIp = getClientIp(httpRequest);
+        
+        // Rate limiting: 3 registrations per hour per IP
+        if (!rateLimiterService.allowRegistration(clientIp)) {
+            throw new RateLimitExceededException(
+                    "Too many registration attempts. Please try again later.", 3600);
+        }
+        
         AuthResponse response = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -39,7 +53,17 @@ public class AuthController {
      * POST /auth/login
      */
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<AuthResponse> login(
+            @Valid @RequestBody LoginRequest request,
+            HttpServletRequest httpRequest) {
+        String clientIp = getClientIp(httpRequest);
+        
+        // Rate limiting: 10 login attempts per minute per IP
+        if (!rateLimiterService.allowLoginAttempt(clientIp)) {
+            throw new RateLimitExceededException(
+                    "Too many login attempts. Please try again later.", 60);
+        }
+        
         AuthResponse response = authService.login(request);
         return ResponseEntity.ok(response);
     }
@@ -105,6 +129,23 @@ public class AuthController {
         } catch (Exception e) {
             return ResponseEntity.ok(false);
         }
+    }
+
+    /**
+     * Extract client IP address from request
+     */
+    private String getClientIp(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (StringUtils.hasText(xForwardedFor)) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+        
+        String xRealIp = request.getHeader("X-Real-IP");
+        if (StringUtils.hasText(xRealIp)) {
+            return xRealIp;
+        }
+        
+        return request.getRemoteAddr();
     }
 }
 
