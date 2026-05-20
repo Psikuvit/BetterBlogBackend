@@ -40,7 +40,7 @@ public class ShareLinkController {
 	}
 
 	@DeleteMapping("/links/{linkId}")
-	public ResponseEntity<Map<String, String>> revokeLink(@PathVariable Long linkId) {
+	public ResponseEntity<Map<String, String>> revokeLink(@PathVariable String linkId) {
 		shareLinkService.revokeShareLink(linkId, getCurrentUser());
 
 		Map<String, String> response = new HashMap<>();

@@ -27,7 +27,7 @@ public class ShareLinkService {
     private final ActivityLogService activityLogService;
 
     public ShareLink createShareLink(ShareLinkRequest request, User user) {
-        Post post = postRepository.findById(Long.parseLong(request.getPostId()))
+        Post post = postRepository.findById(request.getPostId())
                 .orElseThrow(() -> new ResourceNotFoundException("Post not found"));
 
         if (!post.getAuthor().getId().equals(user.getId())) {
@@ -50,7 +50,7 @@ public class ShareLinkService {
         return link;
     }
 
-    public void revokeShareLink(Long linkId, User user) {
+    public void revokeShareLink(String linkId, User user) {
         ShareLink link = shareLinkRepository.findById(linkId)
                 .orElseThrow(() -> new ResourceNotFoundException("Share link not found"));
 

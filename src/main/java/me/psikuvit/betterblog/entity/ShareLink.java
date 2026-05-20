@@ -1,14 +1,16 @@
 package me.psikuvit.betterblog.entity;
 
-import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DocumentReference;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "share_links")
+@Document(collection = "share_links")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -16,36 +18,24 @@ import java.time.LocalDateTime;
 public class ShareLink {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "post_id", nullable = false)
+    @DocumentReference
     private Post post;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
+    @DocumentReference
     private User user;
 
-    @Column(nullable = false, unique = true)
+    @Indexed(unique = true)
     private String token;
 
-    @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
 
-    @Column(name = "access_count")
     @Builder.Default
     private Integer accessCount = 0;
 
-    @Column(name = "max_access")
     private Integer maxAccess;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-    }
 }
 

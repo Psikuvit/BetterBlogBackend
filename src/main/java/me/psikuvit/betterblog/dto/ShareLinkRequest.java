@@ -21,7 +21,7 @@ public class ShareLinkRequest {
 @AllArgsConstructor
 @Builder
 class ShareLinkResponse {
-    private Long id;
+    private String id;
     private String postId;
     private String token;
     private LocalDateTime expiresAt;
