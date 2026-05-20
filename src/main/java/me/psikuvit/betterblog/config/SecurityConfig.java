@@ -66,6 +66,8 @@ public class SecurityConfig {
 
                         // User endpoints
                         .requestMatchers(HttpMethod.GET, "/users/*/profile").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/posts").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/users/{username}/posts").permitAll()
 
                         // All other requests require authentication
                         .anyRequest().authenticated()
