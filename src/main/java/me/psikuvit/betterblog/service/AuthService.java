@@ -108,6 +108,14 @@ public class AuthService {
     }
 
     /**
+     * Get the full user entity by username.
+     */
+    public User getUserEntityByUsername(String username) {
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
+    }
+
+    /**
      * Get user by ID
      */
     public UserDto getUserById(Long userId) {
