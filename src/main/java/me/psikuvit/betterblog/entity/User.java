@@ -44,6 +44,21 @@ public class User {
     @Builder.Default
     private boolean enabled = true;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private Role role = Role.USER;
+
+    @Lob
+    private String preferences;
+
+    @Column(name = "last_login_at")
+    private LocalDateTime lastLoginAt;
+
+    public enum Role {
+        USER, MODERATOR, ADMIN
+    }
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
