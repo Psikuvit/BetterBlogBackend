@@ -22,7 +22,7 @@ public class AuthResponse {
     @AllArgsConstructor
     @Builder
     public static class UserDto {
-        private Long id;
+        private String id;
         private String username;
         private String email;
         private String firstName;
