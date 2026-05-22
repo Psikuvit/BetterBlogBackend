@@ -55,11 +55,31 @@ public class AuthService {
     }
 
     /**
-     * Login user with username and password
+     * Login user with username or email and password
      */
     public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + request.getUsername()));
+        // Validate that at least username or email is provided
+        if (!request.isValid()) {
+            throw new BadRequestException("Either username or email is required");
+        }
+
+        // Try to find user by username or email
+        User user = null;
+        String identifier = "";
+
+        if (request.getUsername() != null && !request.getUsername().isBlank()) {
+            user = userRepository.findByUsername(request.getUsername()).orElse(null);
+            identifier = request.getUsername();
+        }
+
+        if (user == null && request.getEmail() != null && !request.getEmail().isBlank()) {
+            user = userRepository.findByEmail(request.getEmail()).orElse(null);
+            identifier = request.getEmail();
+        }
+
+        if (user == null) {
+            throw new ResourceNotFoundException("User not found: " + (identifier.isEmpty() ? "invalid credentials" : identifier));
+        }
 
         if (!user.isEnabled()) {
             throw new BadRequestException("User account is disabled");
