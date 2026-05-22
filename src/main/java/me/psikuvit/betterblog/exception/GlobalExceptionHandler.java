@@ -23,6 +23,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleResourceNotFoundException(
             ResourceNotFoundException ex, WebRequest request) {
         ErrorResponse errorResponse = ErrorResponse.builder()
+                .code("USER_NOT_FOUND")
                 .status(HttpStatus.NOT_FOUND.value())
                 .message(ex.getMessage())
                 .timestamp(LocalDateTime.now())
@@ -35,6 +36,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleBadRequestException(
             BadRequestException ex, WebRequest request) {
         ErrorResponse errorResponse = ErrorResponse.builder()
+                .code(resolveBadRequestCode(ex.getMessage()))
                 .status(HttpStatus.BAD_REQUEST.value())
                 .message(ex.getMessage())
                 .timestamp(LocalDateTime.now())
@@ -47,6 +49,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleUnauthorizedException(
             UnauthorizedException ex, WebRequest request) {
         ErrorResponse errorResponse = ErrorResponse.builder()
+                .code(resolveUnauthorizedCode(ex.getMessage()))
                 .status(HttpStatus.UNAUTHORIZED.value())
                 .message(ex.getMessage())
                 .timestamp(LocalDateTime.now())
@@ -59,6 +62,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleAlreadyExistsException(
             AlreadyExistsException ex, WebRequest request) {
         ErrorResponse errorResponse = ErrorResponse.builder()
+                .code("ALREADY_EXISTS")
                 .status(HttpStatus.CONFLICT.value())
                 .message(ex.getMessage())
                 .timestamp(LocalDateTime.now())
@@ -71,6 +75,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleRateLimitExceededException(
             RateLimitExceededException ex, WebRequest request) {
         ErrorResponse errorResponse = ErrorResponse.builder()
+                .code("RATE_LIMIT_EXCEEDED")
                 .status(HttpStatus.TOO_MANY_REQUESTS.value())
                 .message(ex.getMessage())
                 .timestamp(LocalDateTime.now())
@@ -90,6 +95,7 @@ public class GlobalExceptionHandler {
         });
 
         ErrorResponse errorResponse = ErrorResponse.builder()
+                .code("VALIDATION_FAILED")
                 .status(HttpStatus.BAD_REQUEST.value())
                 .message("Validation failed")
                 .errors(errors)
@@ -103,6 +109,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleGlobalException(
             WebRequest request) {
         ErrorResponse errorResponse = ErrorResponse.builder()
+                .code("INTERNAL_SERVER_ERROR")
                 .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
                 .message("An unexpected error occurred")
                 .timestamp(LocalDateTime.now())
@@ -111,11 +118,43 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
+    private String resolveBadRequestCode(String message) {
+        if (message == null) {
+            return "BAD_REQUEST";
+        }
+
+        if (message.contains("Either username or email is required")) {
+            return "LOGIN_IDENTIFIER_REQUIRED";
+        }
+
+        return "BAD_REQUEST";
+    }
+
+    private String resolveUnauthorizedCode(String message) {
+        if (message == null) {
+            return "UNAUTHORIZED";
+        }
+
+        String normalized = message.toLowerCase();
+        if (normalized.contains("disabled")) {
+            return "USER_DISABLED";
+        }
+        if (normalized.contains("invalid password")) {
+            return "INVALID_PASSWORD";
+        }
+        if (normalized.contains("token")) {
+            return "INVALID_TOKEN";
+        }
+
+        return "UNAUTHORIZED";
+    }
+
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder
     public static class ErrorResponse {
+        private String code;
         private int status;
         private String message;
         private LocalDateTime timestamp;

@@ -9,6 +9,7 @@ import me.psikuvit.betterblog.entity.User;
 import me.psikuvit.betterblog.exception.AlreadyExistsException;
 import me.psikuvit.betterblog.exception.BadRequestException;
 import me.psikuvit.betterblog.exception.ResourceNotFoundException;
+import me.psikuvit.betterblog.exception.UnauthorizedException;
 import me.psikuvit.betterblog.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -82,11 +83,11 @@ public class AuthService {
         }
 
         if (!user.isEnabled()) {
-            throw new BadRequestException("User account is disabled");
+            throw new UnauthorizedException("User account is disabled");
         }
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new BadRequestException("Invalid password");
+            throw new UnauthorizedException("Invalid password");
         }
 
         // Generate tokens
@@ -106,7 +107,7 @@ public class AuthService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
 
         if (!user.isEnabled()) {
-            throw new BadRequestException("User account is disabled");
+            throw new UnauthorizedException("User account is disabled");
         }
 
         // Generate new access token and refresh token
