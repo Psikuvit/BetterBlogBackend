@@ -63,11 +63,11 @@ public class SecurityConfig {
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/health").permitAll()
                         .requestMatchers("/actuator/**").permitAll()
-
-                        // User endpoints
-                        .requestMatchers(HttpMethod.GET, "/users/*/profile").permitAll()
                         .requestMatchers(HttpMethod.GET, "/posts").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/posts/{id}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/users/{username}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/users/{username}/posts").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/sharing/access/{token}").permitAll()
 
                         // All other requests require authentication
                         .anyRequest().authenticated()
