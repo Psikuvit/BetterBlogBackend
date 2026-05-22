@@ -116,15 +116,6 @@ public class AuthService {
     }
 
     /**
-     * Get user by ID
-     */
-    public UserDto getUserById(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId));
-        return mapToUserDto(user);
-    }
-
-    /**
      * Build AuthResponse with tokens and user info
      */
     private AuthResponse buildAuthResponse(User user, String accessToken, String refreshToken) {
