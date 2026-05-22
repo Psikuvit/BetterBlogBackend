@@ -23,7 +23,7 @@ public class ApiTokenService {
     private final ActivityLogService activityLogService;
 
     public ApiToken createApiToken(ApiTokenRequest request, User user) {
-        String token = "bb_" + UUID.randomUUID().toString();
+        String token = "bb_" + UUID.randomUUID();
         LocalDateTime expiresAt = calculateExpiry(request.getExpiresIn());
 
         ApiToken apiToken = ApiToken.builder()
@@ -35,7 +35,7 @@ public class ApiTokenService {
                 .build();
 
         apiToken = apiTokenRepository.save(apiToken);
-        activityLogService.logActivity(user, "API_TOKEN_CREATED", "ApiToken", apiToken.getId().toString(), request.getName());
+        activityLogService.logActivity(user, "API_TOKEN_CREATED", "ApiToken", apiToken.getId(), request.getName());
         return apiToken;
     }
 
@@ -48,7 +48,7 @@ public class ApiTokenService {
         }
 
         apiTokenRepository.delete(token);
-        activityLogService.logActivity(user, "API_TOKEN_REVOKED", "ApiToken", tokenId.toString(), token.getName());
+        activityLogService.logActivity(user, "API_TOKEN_REVOKED", "ApiToken", tokenId, token.getName());
     }
 
     public List<ApiToken> getUserTokens(User user) {
@@ -72,7 +72,6 @@ public class ApiTokenService {
     private LocalDateTime calculateExpiry(String expiresIn) {
         return switch (expiresIn) {
             case "7d" -> LocalDateTime.now().plusDays(7);
-            case "30d" -> LocalDateTime.now().plusDays(30);
             case "90d" -> LocalDateTime.now().plusDays(90);
             case "1y" -> LocalDateTime.now().plusYears(1);
             default -> LocalDateTime.now().plusDays(30);

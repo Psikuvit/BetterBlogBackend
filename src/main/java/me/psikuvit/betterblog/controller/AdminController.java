@@ -10,7 +10,6 @@ import me.psikuvit.betterblog.repository.PostRepository;
 import me.psikuvit.betterblog.service.ActivityLogService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;

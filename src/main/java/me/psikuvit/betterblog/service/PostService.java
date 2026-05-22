@@ -45,7 +45,7 @@ public class PostService {
                 .build();
 
         post = postRepository.save(post);
-        activityLogService.logActivity(author, "POST_CREATED", "Post", post.getId().toString(), post.getTitle());
+        activityLogService.logActivity(author, "POST_CREATED", "Post", post.getId(), post.getTitle());
         return post;
     }
 
@@ -67,7 +67,7 @@ public class PostService {
         post.setPublic(request.getVisibility().equals("PUBLIC"));
 
         post = postRepository.save(post);
-        activityLogService.logActivity(user, "POST_UPDATED", "Post", post.getId().toString(), post.getTitle());
+        activityLogService.logActivity(user, "POST_UPDATED", "Post", post.getId(), post.getTitle());
         return post;
     }
 
@@ -80,7 +80,7 @@ public class PostService {
         }
 
         postRepository.delete(post);
-        activityLogService.logActivity(user, "POST_DELETED", "Post", post.getId().toString(), post.getTitle());
+        activityLogService.logActivity(user, "POST_DELETED", "Post", post.getId(), post.getTitle());
     }
 
     public Post getPost(String postId) {

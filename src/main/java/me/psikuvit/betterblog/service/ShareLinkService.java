@@ -46,7 +46,7 @@ public class ShareLinkService {
                 .build();
 
         link = shareLinkRepository.save(link);
-        activityLogService.logActivity(user, "SHARING_LINK_CREATED", "ShareLink", link.getId().toString(), post.getTitle());
+        activityLogService.logActivity(user, "SHARING_LINK_CREATED", "ShareLink", link.getId(), post.getTitle());
         return link;
     }
 
@@ -59,7 +59,7 @@ public class ShareLinkService {
         }
 
         shareLinkRepository.delete(link);
-        activityLogService.logActivity(user, "SHARING_LINK_REVOKED", "ShareLink", linkId.toString(), link.getPost().getTitle());
+        activityLogService.logActivity(user, "SHARING_LINK_REVOKED", "ShareLink", linkId, link.getPost().getTitle());
     }
 
     public Post accessViaLink(String token) {
@@ -88,7 +88,6 @@ public class ShareLinkService {
         return switch (expiresIn) {
             case "1h" -> LocalDateTime.now().plusHours(1);
             case "1d" -> LocalDateTime.now().plusDays(1);
-            case "7d" -> LocalDateTime.now().plusDays(7);
             case "30d" -> LocalDateTime.now().plusDays(30);
             case "90d" -> LocalDateTime.now().plusDays(90);
             default -> LocalDateTime.now().plusDays(7);

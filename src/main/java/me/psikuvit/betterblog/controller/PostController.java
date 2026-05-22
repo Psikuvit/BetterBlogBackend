@@ -238,7 +238,7 @@ public class PostController {
         StringBuilder builder = new StringBuilder();
         builder.append("id,title,slug,excerpt,visibility,authorUsername\n");
         for (Post post : posts) {
-            builder.append(safeCsv(post.getId() == null ? null : post.getId().toString())).append(',')
+            builder.append(safeCsv(post.getId() == null ? null : post.getId())).append(',')
                     .append(safeCsv(post.getTitle())).append(',')
                     .append(safeCsv(post.getSlug())).append(',')
                     .append(safeCsv(post.getExcerpt())).append(',')
