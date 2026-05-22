@@ -5,6 +5,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import me.psikuvit.betterblog.exception.UnauthorizedException;
 import me.psikuvit.betterblog.service.JwtService;
 import org.jspecify.annotations.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -36,21 +37,29 @@ public class JwtFilter extends OncePerRequestFilter {
             String token = extractTokenFromRequest(request);
 
             if (StringUtils.hasText(token)) {
-                String username = jwtService.getUsernameFromToken(token);
+                try {
+                    String username = jwtService.getUsernameFromToken(token);
 
-                if (StringUtils.hasText(username) && SecurityContextHolder.getContext().getAuthentication() == null) {
-                    UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                    if (StringUtils.hasText(username) && SecurityContextHolder.getContext().getAuthentication() == null) {
+                        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-                    UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(
-                                    userDetails, null, userDetails.getAuthorities());
-                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                        UsernamePasswordAuthenticationToken authentication =
+                                new UsernamePasswordAuthenticationToken(
+                                        userDetails, null, userDetails.getAuthorities());
+                        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                    }
+                } catch (UnauthorizedException e) {
+                    logger.debug("JWT validation failed: " + e.getMessage());
+                    // Invalid token - continue without authentication
+                } catch (Exception e) {
+                    logger.debug("Error processing JWT token: " + e.getMessage());
+                    // Other errors - continue without authentication
                 }
             }
         } catch (Exception e) {
-            logger.error("Cannot set user authentication: ", e);
+            logger.error("Unexpected error in JWT filter: ", e);
         }
 
         filterChain.doFilter(request, response);
@@ -63,11 +72,14 @@ public class JwtFilter extends OncePerRequestFilter {
         String bearerToken = request.getHeader(AUTHORIZATION_HEADER);
 
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith(BEARER_PREFIX)) {
-            return bearerToken.substring(BEARER_PREFIX.length());
+            String token = bearerToken.substring(BEARER_PREFIX.length());
+            return StringUtils.hasText(token) ? token : null;
         }
 
         return null;
     }
 }
+
+
 
 

@@ -56,19 +56,30 @@ public class JwtService {
                 .sign(Algorithm.HMAC512(jwtSecret));
     }
 
-    /**
+     /**
      * Validate and decode JWT token
      */
-    public DecodedJWT validateToken(String token) {
-        try {
-            return JWT.require(Algorithm.HMAC512(jwtSecret))
-                    .withIssuer(ISSUER)
-                    .build()
-                    .verify(token);
-        } catch (JWTVerificationException e) {
-            throw new UnauthorizedException("Invalid or expired token: " + e.getMessage());
-        }
-    }
+     public DecodedJWT validateToken(String token) {
+         // Check if token is null or empty
+         if (token == null || token.isBlank()) {
+             throw new UnauthorizedException("Invalid or expired token: Token is empty");
+         }
+
+         // Check if token has the expected format (3 parts separated by dots)
+         String[] parts = token.split("\\.");
+         if (parts.length != 3) {
+             throw new UnauthorizedException("Invalid or expired token: Token must have 3 parts");
+         }
+
+         try {
+             return JWT.require(Algorithm.HMAC512(jwtSecret))
+                     .withIssuer(ISSUER)
+                     .build()
+                     .verify(token);
+         } catch (JWTVerificationException e) {
+             throw new UnauthorizedException("Invalid or expired token: " + e.getMessage());
+         }
+     }
 
     /**
      * Extract username from token
