@@ -1,0 +1,35 @@
+spring:
+  application:
+    name: BetterBlog
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+  mongodb:
+    uri: mongodb://admin:password123@mongodb:27017/betterblog?authSource=admin
+    database: betterblog
+
+management:
+  health:
+    mongodb:
+      enabled: false
+
+# JWT Configuration
+jwt:
+  secret: hy1F--_ZKej:8+4U3$JzpGyU-2ig9q@]gqq9/f$lD;n
+  expiration: 86400000 # 24 hours in milliseconds
+  refresh-expiration: 604800000 # 7 days in milliseconds
+
+# Server Configuration
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+# Logging
+logging:
+  level:
+    root: INFO
+    me.psikuvit.betterblog: DEBUG
+    org.springframework.security: DEBUG
+

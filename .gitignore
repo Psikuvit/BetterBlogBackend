@@ -31,3 +31,11 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Credentials & Sensitive Files ###
+application.yml
+.env
+.env.local
+.env.*.local
+application-prod.yml
+

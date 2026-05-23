@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  # MongoDB service
+  mongodb:
+    image: mongo:7.0
+    container_name: betterblog-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: betterblog
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - betterblog-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Spring Boot application
+  betterblog:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: betterblog-app
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_MONGODB_URI: mongodb://admin:password123@mongodb:27017/betterblog?authSource=admin
+      SPRING_MONGODB_DATABASE: betterblog
+      JWT_SECRET: hy1F--_ZKej:8+4U3$JzpGyU-2ig9q@]gqq9/f$lD;n
+      JWT_EXPIRATION: 86400000
+      JWT_REFRESH_EXPIRATION: 604800000
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - betterblog-network
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
+    driver: local
+
+networks:
+  betterblog-network:
+    driver: bridge
+
