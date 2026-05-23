@@ -33,9 +33,10 @@ build/
 .vscode/
 
 ### Credentials & Sensitive Files ###
-application.yml
 .env
 .env.local
 .env.*.local
+.env.prod
 application-prod.yml
+application-local.yml
 
