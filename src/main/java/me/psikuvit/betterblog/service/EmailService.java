@@ -1,34 +1,59 @@
 package me.psikuvit.betterblog.service;
 
+import com.resend.Resend;
+import com.resend.core.exception.ResendException;
+import com.resend.services.emails.model.CreateEmailOptions;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.ObjectProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
 public class EmailService {
 
-    private final ObjectProvider<JavaMailSender> javaMailSenderProvider;
+    private static final Logger log = LoggerFactory.getLogger(EmailService.class);
 
-    @Value("${app.mail.from:no-reply@betterblog.local}")
+    @Value("${app.resend.api-key:}")
+    private String resendApiKey;
+
+    @Value("${app.mail.from:no-reply@betterblog.com}")
     private String fromAddress;
 
     public void sendPasswordResetCode(String to, String code, int expiresInMinutes) {
-        JavaMailSender mailSender = javaMailSenderProvider.getIfAvailable();
-        if (mailSender == null) {
-            throw new IllegalStateException("Mail sender is not configured");
+        String subject = "Your BetterBlog password reset code";
+        String text = buildPasswordResetMessage(code, expiresInMinutes);
+        sendEmail(to, subject, text);
+    }
+
+    public void sendTestEmail(String to) {
+        sendEmail(
+                to,
+                "BetterBlog mail test",
+                "This is a test email from BetterBlog. If you received this, Resend is working."
+        );
+    }
+
+    private void sendEmail(String to, String subject, String text) {
+        if (resendApiKey == null || resendApiKey.isBlank()) {
+            throw new IllegalStateException("Resend API key is not configured");
         }
 
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(to);
-        message.setFrom(fromAddress);
-        message.setSubject("Your BetterBlog password reset code");
-        message.setText(buildPasswordResetMessage(code, expiresInMinutes));
+        try {
+            Resend resend = new Resend(resendApiKey);
+            CreateEmailOptions options = CreateEmailOptions.builder()
+                    .from(fromAddress)
+                    .to(to)
+                    .subject(subject)
+                    .text(text)
+                    .build();
 
-        mailSender.send(message);
+            String emailId = resend.emails().send(options).getId();
+            log.debug("Resend accepted email to {} with id {}", to, emailId);
+        } catch (ResendException e) {
+            throw new IllegalStateException("Resend request failed: " + e.getMessage(), e);
+        }
     }
 
     private String buildPasswordResetMessage(String code, int expiresInMinutes) {

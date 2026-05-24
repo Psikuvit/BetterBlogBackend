@@ -37,11 +37,8 @@ services:
       JWT_SECRET: hy1F--_ZKej:8+4U3$JzpGyU-2ig9q@]gqq9/f$lD;n
       JWT_EXPIRATION: 86400000
       JWT_REFRESH_EXPIRATION: 604800000
-      SPRING_MAIL_HOST: mailhog
-      SPRING_MAIL_PORT: 1025
-      SPRING_MAIL_SMTP_AUTH: false
-      SPRING_MAIL_SMTP_STARTTLS_ENABLE: false
-      MAIL_FROM: no-reply@betterblog.local
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      MAIL_FROM: no-reply@betterblog.com
       PASSWORD_RESET_CODE_TTL_MINUTES: 30
     depends_on:
       mongodb:
