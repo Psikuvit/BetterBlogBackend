@@ -13,15 +13,18 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 
 import java.time.LocalDateTime;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleResourceNotFoundException(
             ResourceNotFoundException ex, WebRequest request) {
+        log.info("Resource not found: {} - {}", ex.getMessage(), request.getDescription(false));
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .code("USER_NOT_FOUND")
                 .status(HttpStatus.NOT_FOUND.value())
@@ -35,6 +38,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BadRequestException.class)
     public ResponseEntity<ErrorResponse> handleBadRequestException(
             BadRequestException ex, WebRequest request) {
+        log.warn("Bad request: {} - {}", ex.getMessage(), request.getDescription(false));
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .code(resolveBadRequestCode(ex.getMessage()))
                 .status(HttpStatus.BAD_REQUEST.value())
@@ -48,6 +52,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(UnauthorizedException.class)
     public ResponseEntity<ErrorResponse> handleUnauthorizedException(
             UnauthorizedException ex, WebRequest request) {
+        log.warn("Unauthorized: {} - {}", ex.getMessage(), request.getDescription(false));
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .code(resolveUnauthorizedCode(ex.getMessage()))
                 .status(HttpStatus.UNAUTHORIZED.value())
@@ -61,6 +66,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AlreadyExistsException.class)
     public ResponseEntity<ErrorResponse> handleAlreadyExistsException(
             AlreadyExistsException ex, WebRequest request) {
+        log.warn("Conflict / already exists: {} - {}", ex.getMessage(), request.getDescription(false));
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .code("ALREADY_EXISTS")
                 .status(HttpStatus.CONFLICT.value())
@@ -74,6 +80,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RateLimitExceededException.class)
     public ResponseEntity<ErrorResponse> handleRateLimitExceededException(
             RateLimitExceededException ex, WebRequest request) {
+        log.warn("Rate limit exceeded: {} - {}", ex.getMessage(), request.getDescription(false));
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .code("RATE_LIMIT_EXCEEDED")
                 .status(HttpStatus.TOO_MANY_REQUESTS.value())
@@ -87,6 +94,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(
             MethodArgumentNotValidException ex, WebRequest request) {
+        log.warn("Validation failed: {} - {}", ex.getMessage(), request.getDescription(false));
         Map<String, String> errors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach((error) -> {
             String fieldName = ((FieldError) error).getField();
@@ -106,8 +114,8 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGlobalException(
-            WebRequest request) {
+    public ResponseEntity<ErrorResponse> handleGlobalException(Exception ex, WebRequest request) {
+        log.error("Unhandled exception at {}: {}", request.getDescription(false), ex.getMessage(), ex);
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .code("INTERNAL_SERVER_ERROR")
                 .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
