@@ -5,12 +5,17 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import me.psikuvit.betterblog.config.RateLimiterService;
 import me.psikuvit.betterblog.dto.AuthResponse;
+import me.psikuvit.betterblog.dto.ForgotPasswordRequest;
+import me.psikuvit.betterblog.dto.ForgotPasswordResponse;
 import me.psikuvit.betterblog.dto.LoginRequest;
 import me.psikuvit.betterblog.dto.RegisterRequest;
+import me.psikuvit.betterblog.dto.ResetPasswordRequest;
+import me.psikuvit.betterblog.dto.ResetPasswordResponse;
 import me.psikuvit.betterblog.dto.UserDto;
 import me.psikuvit.betterblog.exception.RateLimitExceededException;
 import me.psikuvit.betterblog.service.AuthService;
 import me.psikuvit.betterblog.service.JwtService;
+import me.psikuvit.betterblog.service.PasswordResetService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -27,6 +32,7 @@ public class AuthController {
     private final AuthService authService;
     private final JwtService jwtService;
     private final RateLimiterService rateLimiterService;
+    private final PasswordResetService passwordResetService;
 
     /**
      * Register a new user
@@ -65,6 +71,40 @@ public class AuthController {
         }
         
         AuthResponse response = authService.login(request);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Request a password reset code to be emailed to the user.
+     * POST /auth/forgot-password
+     */
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ForgotPasswordResponse> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request,
+            HttpServletRequest httpRequest) {
+        String clientIp = getClientIp(httpRequest);
+
+        // Rate limiting: 5 password reset requests per hour per IP
+        if (!rateLimiterService.allowPasswordResetRequest(clientIp)) {
+            throw new RateLimitExceededException(
+                    "Too many password reset attempts. Please try again later.", 3600);
+        }
+
+        ForgotPasswordResponse response = passwordResetService.requestPasswordReset(request.getEmail());
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Reset the user's password with the code sent to email.
+     * POST /auth/reset-password
+     */
+    @PostMapping("/reset-password")
+    public ResponseEntity<ResetPasswordResponse> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request) {
+        ResetPasswordResponse response = passwordResetService.resetPassword(
+                request.getEmail(),
+                request.getCode(),
+                request.getNewPassword());
         return ResponseEntity.ok(response);
     }
 
