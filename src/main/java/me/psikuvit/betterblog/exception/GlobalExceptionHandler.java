@@ -123,8 +123,21 @@ public class GlobalExceptionHandler {
             return "BAD_REQUEST";
         }
 
-        if (message.contains("Either username or email is required")) {
+        String normalized = message.toLowerCase();
+        if (normalized.contains("either username or email is required")) {
             return "LOGIN_IDENTIFIER_REQUIRED";
+        }
+
+        if (normalized.contains("reset code has expired")) {
+            return "PASSWORD_RESET_CODE_EXPIRED";
+        }
+
+        if (normalized.contains("invalid reset code")) {
+            return "PASSWORD_RESET_CODE_INVALID";
+        }
+
+        if (normalized.contains("reset code is missing") || normalized.contains("reset code is missing or expired")) {
+            return "PASSWORD_RESET_CODE_MISSING";
         }
 
         return "BAD_REQUEST";
