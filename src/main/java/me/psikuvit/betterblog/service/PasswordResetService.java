@@ -8,6 +8,9 @@ import me.psikuvit.betterblog.exception.BadRequestException;
 import me.psikuvit.betterblog.exception.ResourceNotFoundException;
 import me.psikuvit.betterblog.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.util.concurrent.CompletableFuture;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +24,7 @@ import java.time.LocalDateTime;
 public class PasswordResetService {
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private static final Logger log = LoggerFactory.getLogger(PasswordResetService.class);
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -35,7 +39,15 @@ public class PasswordResetService {
             user.setPasswordResetCodeHash(passwordEncoder.encode(code));
             user.setPasswordResetCodeExpiresAt(LocalDateTime.now().plusMinutes(codeValidityMinutes));
             userRepository.save(user);
-            emailService.sendPasswordResetCode(user.getEmail(), code, codeValidityMinutes);
+
+            CompletableFuture.runAsync(() -> {
+                try {
+                    emailService.sendPasswordResetCode(user.getEmail(), code, codeValidityMinutes);
+                } catch (Exception e) {
+                    // Log and swallow exceptions to avoid leaking SMTP errors to clients
+                    log.warn("Failed to send password reset email to {}", user.getEmail(), e);
+                }
+            });
         });
 
         return ForgotPasswordResponse.builder()

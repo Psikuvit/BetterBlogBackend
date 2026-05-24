@@ -19,6 +19,9 @@ spring:
           auth: ${SPRING_MAIL_SMTP_AUTH:false}
           starttls:
             enable: ${SPRING_MAIL_SMTP_STARTTLS_ENABLE:false}
+          connectiontimeout: ${SPRING_MAIL_SMTP_CONNECTION_TIMEOUT:5000}
+          timeout: ${SPRING_MAIL_SMTP_TIMEOUT:5000}
+          writetimeout: ${SPRING_MAIL_SMTP_WRITETIMEOUT:5000}
 
 # JWT Configuration
 jwt:
