@@ -27,6 +27,10 @@ public class User {
 
     private String password;
 
+    private String passwordResetCodeHash;
+
+    private LocalDateTime passwordResetCodeExpiresAt;
+
     private String profilePictureUrl;
 
     private String bio;
