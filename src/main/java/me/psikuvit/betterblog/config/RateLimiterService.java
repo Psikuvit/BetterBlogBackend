@@ -2,7 +2,6 @@ package me.psikuvit.betterblog.config;
 
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
-import io.github.bucket4j.Bucket4j;
 import io.github.bucket4j.Refill;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,21 +16,14 @@ public class RateLimiterService {
 
     private final Map<String, Bucket> cache = new ConcurrentHashMap<>();
 
-    // Rate limit: 5 requests per minute per IP
-    private static final int REQUESTS_PER_MINUTE = 5;
-
     // Rate limit: 10 requests per minute per endpoint for login attempts
     private static final int LOGIN_REQUESTS_PER_MINUTE = 10;
 
     // Rate limit: 3 requests per hour per IP for registration
     private static final int REGISTER_REQUESTS_PER_HOUR = 3;
 
-    /**
-     * Get or create bucket for general rate limiting (5 req/min)
-     */
-    public Bucket getBucket(String key) {
-        return cache.computeIfAbsent(key, k -> createStandardBucket());
-    }
+    // Rate limit: 5 requests per hour per IP for password reset requests
+    private static final int PASSWORD_RESET_REQUESTS_PER_HOUR = 5;
 
     /**
      * Get or create bucket for login rate limiting (10 req/min)
@@ -48,10 +40,10 @@ public class RateLimiterService {
     }
 
     /**
-     * Check if request is allowed and consume a token
+     * Get or create bucket for password reset requests (5 req/hour)
      */
-    public boolean allowRequest(String key) {
-        return getBucket(key).tryConsume(1);
+    public Bucket getPasswordResetBucket(String key) {
+        return cache.computeIfAbsent("password_reset_" + key, k -> createPasswordResetBucket());
     }
 
     /**
@@ -69,34 +61,10 @@ public class RateLimiterService {
     }
 
     /**
-     * Get remaining tokens for a key
+     * Check if password reset request is allowed and consume a token
      */
-    public long getRemainingTokens(String key) {
-        return getBucket(key).getAvailableTokens();
-    }
-
-    /**
-     * Get remaining tokens for login bucket
-     */
-    public long getRemainingLoginTokens(String key) {
-        return getLoginBucket(key).getAvailableTokens();
-    }
-
-    /**
-     * Get remaining tokens for register bucket
-     */
-    public long getRemainingRegisterTokens(String key) {
-        return getRegisterBucket(key).getAvailableTokens();
-    }
-
-    /**
-     * Create standard bucket: 5 requests per minute
-     */
-    private Bucket createStandardBucket() {
-        Bandwidth limit = Bandwidth.classic(REQUESTS_PER_MINUTE, Refill.intervally(REQUESTS_PER_MINUTE, Duration.ofMinutes(1)));
-        return Bucket4j.builder()
-                .addLimit(limit)
-                .build();
+    public boolean allowPasswordResetRequest(String key) {
+        return getPasswordResetBucket(key).tryConsume(1);
     }
 
     /**
@@ -104,7 +72,7 @@ public class RateLimiterService {
      */
     private Bucket createLoginBucket() {
         Bandwidth limit = Bandwidth.classic(LOGIN_REQUESTS_PER_MINUTE, Refill.intervally(LOGIN_REQUESTS_PER_MINUTE, Duration.ofMinutes(1)));
-        return Bucket4j.builder()
+        return Bucket.builder()
                 .addLimit(limit)
                 .build();
     }
@@ -114,7 +82,17 @@ public class RateLimiterService {
      */
     private Bucket createRegisterBucket() {
         Bandwidth limit = Bandwidth.classic(REGISTER_REQUESTS_PER_HOUR, Refill.intervally(REGISTER_REQUESTS_PER_HOUR, Duration.ofHours(1)));
-        return Bucket4j.builder()
+        return Bucket.builder()
+                .addLimit(limit)
+                .build();
+    }
+
+    /**
+     * Create password reset bucket: 5 requests per hour
+     */
+    private Bucket createPasswordResetBucket() {
+        Bandwidth limit = Bandwidth.classic(PASSWORD_RESET_REQUESTS_PER_HOUR, Refill.intervally(PASSWORD_RESET_REQUESTS_PER_HOUR, Duration.ofHours(1)));
+        return Bucket.builder()
                 .addLimit(limit)
                 .build();
     }
