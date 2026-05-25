@@ -7,6 +7,7 @@ import me.psikuvit.betterblog.entity.Post.Visibility;
 import me.psikuvit.betterblog.entity.User;
 import me.psikuvit.betterblog.exception.ResourceNotFoundException;
 import me.psikuvit.betterblog.exception.BadRequestException;
+import me.psikuvit.betterblog.exception.ForbiddenException;
 import me.psikuvit.betterblog.repository.PostRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -54,7 +55,7 @@ public class PostService {
                 .orElseThrow(() -> new ResourceNotFoundException("Post not found"));
 
         if (!post.getAuthor().getId().equals(user.getId()) && !user.getRole().equals(User.Role.ADMIN)) {
-            throw new BadRequestException("You don't have permission to edit this post");
+            throw new ForbiddenException("You don't have permission to edit this post");
         }
 
         post.setTitle(request.getTitle());
@@ -76,7 +77,7 @@ public class PostService {
                 .orElseThrow(() -> new ResourceNotFoundException("Post not found"));
 
         if (!post.getAuthor().getId().equals(user.getId()) && !user.getRole().equals(User.Role.ADMIN)) {
-            throw new BadRequestException("You don't have permission to delete this post");
+            throw new ForbiddenException("You don't have permission to delete this post");
         }
 
         postRepository.delete(post);
