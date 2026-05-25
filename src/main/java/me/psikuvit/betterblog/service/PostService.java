@@ -92,6 +92,10 @@ public class PostService {
         return postRepository.findByVisibility(Visibility.PUBLIC, pageable);
     }
 
+    public long countByVisibility(Visibility visibility) {
+        return postRepository.countByVisibility(visibility);
+    }
+
     public Page<Post> getPostsByVisibility(Visibility visibility, Pageable pageable) {
         return postRepository.findByVisibility(visibility, pageable);
     }
@@ -108,5 +112,3 @@ public class PostService {
         return postRepository.findByAuthor(user, pageable);
     }
 }
-
-

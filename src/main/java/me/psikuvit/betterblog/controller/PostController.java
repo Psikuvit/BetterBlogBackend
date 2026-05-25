@@ -149,6 +149,14 @@ public class PostController {
         }
     }
 
+    @GetMapping("/public/count")
+    public ResponseEntity<Map<String, Long>> getPublicPostCount() {
+        long count = postService.countByVisibility(Post.Visibility.PUBLIC);
+        Map<String, Long> result = new HashMap<>();
+        result.put("count", count);
+        return ResponseEntity.ok(result);
+    }
+
     @PostMapping("/import")
     public ResponseEntity<Map<String, Object>> importPosts(@RequestBody Map<String, Object> request) {
         User currentUser = getCurrentUser();
@@ -462,4 +470,3 @@ public class PostController {
         return requests;
     }
 }
-

@@ -20,7 +20,7 @@ public interface PostRepository extends MongoRepository<Post, String> {
     @Query("{ $or: [ { 'visibility': 'PUBLIC' }, { $and: [ { 'visibility': 'PRIVATE' }, { 'author': ?0 } ] } ] }")
     Page<Post> findAccessiblePosts(User author, Pageable pageable);
 
-    @Query("{ $or: [ { 'title': { $regex: '?0', $options: 'i' } }, { 'content': { $regex: '?0', $options: 'i' } } ] }")
+    @Query("{ $or: [ { 'title': { $regex: ?0, $options: 'i' } }, { 'content': { $regex: ?0, $options: 'i' } } ] }")
     Page<Post> searchPosts(String query, Pageable pageable);
 
     @Query("{ 'tags': { $in: [?0] } }")
