@@ -1,5 +1,6 @@
 package me.psikuvit.betterblog.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -7,6 +8,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
+
 import java.time.LocalDateTime;
 
 @Document(collection = "users")
@@ -25,10 +27,13 @@ public class User {
     @Indexed(unique = true)
     private String email;
 
+    @JsonIgnore
     private String password;
 
+    @JsonIgnore
     private String passwordResetCodeHash;
 
+    @JsonIgnore
     private LocalDateTime passwordResetCodeExpiresAt;
 
     private String profilePictureUrl;
@@ -53,5 +58,3 @@ public class User {
 
     private LocalDateTime updatedAt;
 }
-
-
