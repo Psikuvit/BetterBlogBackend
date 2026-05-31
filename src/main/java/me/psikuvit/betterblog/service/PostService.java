@@ -21,11 +21,14 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final ActivityLogService activityLogService;
+    private final LinkPreviewService linkPreviewService;
 
     public Post createPost(PostRequest request, User author) {
         if (postRepository.findBySlug(request.getSlug()).isPresent()) {
             throw new BadRequestException("Post with this slug already exists");
         }
+
+        LinkPreviewData preview = resolvePreview(request);
 
         Post post = Post.builder()
                 .title(request.getTitle())
@@ -36,9 +39,9 @@ public class PostService {
                 .visibility(Visibility.valueOf(request.getVisibility()))
                 .coverImageUrl(request.getCoverImageUrl())
                 .sourceUrl(request.getSourceUrl())
-                .sourcePreviewTitle(request.getSourcePreviewTitle())
-                .sourcePreviewDescription(request.getSourcePreviewDescription())
-                .sourcePreviewImage(request.getSourcePreviewImage())
+                .sourcePreviewTitle(preview.title())
+                .sourcePreviewDescription(preview.description())
+                .sourcePreviewImage(preview.image())
                 .originalAuthor(request.getOriginalAuthor())
                 .legacyId(request.getLegacyId())
                 .author(author)
@@ -65,6 +68,14 @@ public class PostService {
         post.setTags(request.getTags());
         post.setVisibility(Visibility.valueOf(request.getVisibility()));
         post.setCoverImageUrl(request.getCoverImageUrl());
+        post.setSourceUrl(request.getSourceUrl());
+
+        LinkPreviewData preview = resolvePreview(request);
+        post.setSourcePreviewTitle(preview.title());
+        post.setSourcePreviewDescription(preview.description());
+        post.setSourcePreviewImage(preview.image());
+        post.setOriginalAuthor(request.getOriginalAuthor());
+        post.setLegacyId(request.getLegacyId());
         post.setPublic(request.getVisibility().equals("PUBLIC"));
 
         post = postRepository.save(post);
@@ -112,4 +123,18 @@ public class PostService {
     public Page<Post> getUserPosts(User user, Pageable pageable) {
         return postRepository.findByAuthor(user, pageable);
     }
+
+    private LinkPreviewData resolvePreview(PostRequest request) {
+        if (request.getSourceUrl() == null || request.getSourceUrl().isBlank()) {
+            return new LinkPreviewData(
+                    request.getSourcePreviewTitle(),
+                    request.getSourcePreviewDescription(),
+                    request.getSourcePreviewImage());
+        }
+
+        var preview = linkPreviewService.fetchPreview(request.getSourceUrl());
+        return new LinkPreviewData(preview.getTitle(), preview.getDescription(), preview.getImage());
+    }
+
+    private record LinkPreviewData(String title, String description, String image) { }
 }

@@ -8,6 +8,7 @@ import me.psikuvit.betterblog.entity.User;
 import me.psikuvit.betterblog.exception.BadRequestException;
 import me.psikuvit.betterblog.exception.UnauthorizedException;
 import me.psikuvit.betterblog.service.AuthService;
+import me.psikuvit.betterblog.service.LinkPreviewService;
 import me.psikuvit.betterblog.service.PostService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -19,20 +20,12 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URI;
-import java.net.URL;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping("/posts")
@@ -42,6 +35,7 @@ public class PostController {
 
     private final PostService postService;
     private final AuthService authService;
+    private final LinkPreviewService linkPreviewService;
 
     @GetMapping
     public ResponseEntity<Page<Post>> getPosts(
@@ -100,31 +94,9 @@ public class PostController {
 
     @PostMapping("/preview")
     public ResponseEntity<Map<String, Object>> previewUrl(@RequestParam String url) {
-        if (!StringUtils.hasText(url)) {
-            throw new BadRequestException("URL is required");
-        }
-
-        try {
-            String html = fetchHtml(url.trim());
-            if (html == null) {
-                throw new BadRequestException("Unable to fetch preview data from the provided URL");
-            }
-            Map<String, Object> preview = new HashMap<>();
-            preview.put("url", url);
-            preview.put("title", firstNonBlank(
-                    extractMeta(html, "og:title"),
-                    extractTitleTag(html)));
-            preview.put("description", extractMeta(html, "og:description"));
-            preview.put("image", extractMeta(html, "og:image"));
-
-            Map<String, Object> result = new HashMap<>();
-            result.put("preview", preview);
-            return ResponseEntity.ok(result);
-        } catch (IllegalArgumentException ex) {
-            throw new BadRequestException("Invalid URL: " + url);
-        } catch (IOException ex) {
-            throw new BadRequestException("Unable to fetch preview data");
-        }
+        Map<String, Object> result = new HashMap<>();
+        result.put("preview", linkPreviewService.fetchPreview(url));
+        return ResponseEntity.ok(result);
     }
 
     @PostMapping("/export")
@@ -196,51 +168,6 @@ public class PostController {
         return authService.getUserEntityByUsername(authentication.getName());
     }
 
-    private String fetchHtml(String url) throws IOException {
-        URL target = URI.create(url).toURL();
-        HttpURLConnection connection = (HttpURLConnection) target.openConnection();
-        connection.setInstanceFollowRedirects(true);
-        connection.setRequestMethod("GET");
-        connection.setRequestProperty("User-Agent", "BetterBlog/1.0");
-
-        int status = connection.getResponseCode();
-        if (status >= 400) {
-            return null;
-        }
-
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
-            StringBuilder builder = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                builder.append(line).append('\n');
-            }
-            return builder.toString();
-        }
-    }
-
-    private String extractMeta(String html, String property) {
-        Pattern pattern = Pattern.compile(
-                "<meta[^>]+(?:property|name)=[\"']" + Pattern.quote(property) + "[\"'][^>]+content=[\"']([^\"']+)[\"']",
-                Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-        Matcher matcher = pattern.matcher(html);
-        return matcher.find() ? matcher.group(1).trim() : null;
-    }
-
-    private String extractTitleTag(String html) {
-        Pattern pattern = Pattern.compile("<title[^>]*>(.*?)</title>",
-                Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-        Matcher matcher = pattern.matcher(html);
-        return matcher.find() ? matcher.group(1).replaceAll("<[^>]+>", "").trim() : null;
-    }
-
-    private String firstNonBlank(String... values) {
-        for (String value : values) {
-            if (StringUtils.hasText(value)) {
-                return value;
-            }
-        }
-        return null;
-    }
 
     private String toCsv(List<Post> posts) {
         StringBuilder builder = new StringBuilder();
