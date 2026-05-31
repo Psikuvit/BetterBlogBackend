@@ -23,6 +23,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final TokenBlacklistService tokenBlacklistService;
 
     /**
      * Register a new user
@@ -101,6 +102,11 @@ public class AuthService {
      * Refresh access token using refresh token
      */
     public AuthResponse refreshToken(String refreshToken) {
+        // Reject revoked refresh tokens
+        if (tokenBlacklistService.isRevoked(refreshToken)) {
+            throw new UnauthorizedException("Refresh token has been revoked");
+        }
+
         String username = jwtService.getUsernameFromToken(refreshToken);
 
         User user = userRepository.findByUsername(username)

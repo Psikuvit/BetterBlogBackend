@@ -16,6 +16,7 @@ import me.psikuvit.betterblog.exception.RateLimitExceededException;
 import me.psikuvit.betterblog.service.AuthService;
 import me.psikuvit.betterblog.service.JwtService;
 import me.psikuvit.betterblog.service.PasswordResetService;
+import me.psikuvit.betterblog.service.TokenBlacklistService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -33,6 +34,7 @@ public class AuthController {
     private final JwtService jwtService;
     private final RateLimiterService rateLimiterService;
     private final PasswordResetService passwordResetService;
+    private final TokenBlacklistService tokenBlacklistService;
 
     /**
      * Register a new user
@@ -146,9 +148,27 @@ public class AuthController {
      * POST /auth/logout
      */
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout() {
+    public ResponseEntity<Void> logout(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @RequestBody(required = false) String body) {
+        if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring("Bearer ".length());
+            try {
+                tokenBlacklistService.revokeToken(token);
+            } catch (Exception ignored) {
+            }
+        }
+
+        if (!StringUtils.hasText(authHeader) && StringUtils.hasText(body)) {
+            String token = body.trim();
+            try {
+                tokenBlacklistService.revokeToken(token);
+            } catch (Exception ignored) {
+            }
+        }
+
         SecurityContextHolder.clearContext();
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 
     /**
