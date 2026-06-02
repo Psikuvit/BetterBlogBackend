@@ -14,6 +14,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -29,6 +31,9 @@ public class PostService {
         }
 
         LinkPreviewData preview = resolvePreview(request);
+
+        // ensure timestamps are populated so DTOs returned to frontend contain them
+        LocalDateTime now = LocalDateTime.now();
 
         Post post = Post.builder()
                 .title(request.getTitle())
@@ -46,6 +51,10 @@ public class PostService {
                 .legacyId(request.getLegacyId())
                 .author(author)
                 .isPublic(request.getVisibility().equals("PUBLIC"))
+                .createdAt(now)
+                .updatedAt(now)
+                .importedAt(request.getLegacyId() != null ? now : null)
+                .publishedAt(request.getVisibility().equals("PUBLIC") ? now : null)
                 .build();
 
         post = postRepository.save(post);
@@ -77,6 +86,14 @@ public class PostService {
         post.setOriginalAuthor(request.getOriginalAuthor());
         post.setLegacyId(request.getLegacyId());
         post.setPublic(request.getVisibility().equals("PUBLIC"));
+
+        // update timestamps
+        LocalDateTime now = LocalDateTime.now();
+        post.setUpdatedAt(now);
+        // if post becomes public and wasn't published before, set publishedAt
+        if (post.getVisibility() == Visibility.PUBLIC && post.getPublishedAt() == null) {
+            post.setPublishedAt(now);
+        }
 
         post = postRepository.save(post);
         activityLogService.logActivity(user, "POST_UPDATED", "Post", post.getId(), post.getTitle());
