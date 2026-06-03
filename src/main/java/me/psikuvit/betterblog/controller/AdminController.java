@@ -45,6 +45,8 @@ public class AdminController {
         stats.put("totalPosts", postRepository.count());
         stats.put("totalPublicPosts", postRepository.countByVisibility(Post.Visibility.PUBLIC));
         stats.put("totalPrivatePosts", postRepository.countByVisibility(Post.Visibility.PRIVATE));
+        stats.put("moderatorsCount", userRepository.countByRole(User.Role.MODERATOR));
+        stats.put("adminsCount", userRepository.countByRole(User.Role.ADMIN));
 
         return ResponseEntity.ok(stats);
     }
