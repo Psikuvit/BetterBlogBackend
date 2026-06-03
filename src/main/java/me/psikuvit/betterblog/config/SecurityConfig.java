@@ -77,7 +77,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/users/{username}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/users/{username}/posts").permitAll()
                         .requestMatchers(HttpMethod.GET, "/sharing/access/{token}").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/posts/count").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/posts/public/count").permitAll()
 
                         // All other requests require authentication
                         .anyRequest().authenticated()
