@@ -2,7 +2,10 @@ package me.psikuvit.betterblog.controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import me.psikuvit.betterblog.dto.PostReportDto;
+import me.psikuvit.betterblog.dto.PostReportRequest;
 import me.psikuvit.betterblog.dto.PostRequest;
+import me.psikuvit.betterblog.service.PostReportService;
 import me.psikuvit.betterblog.entity.Post;
 import me.psikuvit.betterblog.entity.User;
 import me.psikuvit.betterblog.exception.BadRequestException;
@@ -36,6 +39,7 @@ public class PostController {
     private final PostService postService;
     private final AuthService authService;
     private final LinkPreviewService linkPreviewService;
+    private final PostReportService postReportService;
 
     @GetMapping
     public ResponseEntity<Page<Post>> getPosts(
@@ -52,12 +56,7 @@ public class PostController {
         }
 
         if (StringUtils.hasText(visibility)) {
-            try {
-                return ResponseEntity.ok(postService.getPostsByVisibility(
-                        Post.Visibility.valueOf(visibility.trim().toUpperCase(Locale.ROOT)), pageable));
-            } catch (IllegalArgumentException ex) {
-                throw new BadRequestException("Invalid visibility value: " + visibility);
-            }
+            throw new BadRequestException("Visibility filter is not supported on this endpoint; use /admin/posts when authenticated as admin");
         }
 
         return ResponseEntity.ok(postService.getPublicPosts(pageable));
@@ -65,8 +64,17 @@ public class PostController {
 
     @GetMapping("/{id}")
     public ResponseEntity<Post> getPost(@PathVariable String id) {
-        Post post = postService.getPost(id);
+        Post post = postService.getPost(id, getCurrentUser());
         return ResponseEntity.ok(post);
+    }
+
+    @PostMapping("/{id}/report")
+    public ResponseEntity<PostReportDto> reportPost(
+            @PathVariable String id,
+            @Valid @RequestBody PostReportRequest request) {
+        User currentUser = getCurrentUser();
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(postReportService.reportPost(id, request, currentUser));
     }
 
     @PostMapping

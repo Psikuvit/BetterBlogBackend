@@ -61,6 +61,8 @@ public class Post {
 
     private String madePrivateBy;
 
+    private User.Role madePrivateByRole;
+
     private LocalDateTime madePrivateAt;
 
     private LocalDateTime createdAt;

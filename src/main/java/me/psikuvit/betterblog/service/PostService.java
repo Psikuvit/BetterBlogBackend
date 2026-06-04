@@ -24,15 +24,26 @@ public class PostService {
     private final PostRepository postRepository;
     private final ActivityLogService activityLogService;
     private final LinkPreviewService linkPreviewService;
+    private final PostAccessService postAccessService;
+    private final AppSettingsService appSettingsService;
 
     public Post createPost(PostRequest request, User author) {
+        long postCount = postRepository.countByAuthor(author);
+        int maxPosts = appSettingsService.getMaxPostsPerUser();
+        if (postCount >= maxPosts) {
+            throw new BadRequestException("Maximum posts per user limit reached (" + maxPosts + ")");
+        }
+
         if (postRepository.findBySlug(request.getSlug()).isPresent()) {
             throw new BadRequestException("Post with this slug already exists");
         }
 
-        LinkPreviewData preview = resolvePreview(request);
+        Visibility visibility = parseVisibility(request.getVisibility());
+        if (author.getRole() == User.Role.USER && visibility == Visibility.ADMIN_PRIVATE) {
+            throw new ForbiddenException("You cannot create staff-private posts");
+        }
 
-        // ensure timestamps are populated so DTOs returned to frontend contain them
+        LinkPreviewData preview = resolvePreview(request);
         LocalDateTime now = LocalDateTime.now();
 
         Post post = Post.builder()
@@ -41,7 +52,7 @@ public class PostService {
                 .excerpt(request.getExcerpt())
                 .content(request.getContent())
                 .tags(request.getTags())
-                .visibility(Visibility.valueOf(request.getVisibility()))
+                .visibility(visibility)
                 .coverImageUrl(request.getCoverImageUrl())
                 .sourceUrl(request.getSourceUrl())
                 .sourcePreviewTitle(preview.title())
@@ -50,12 +61,14 @@ public class PostService {
                 .originalAuthor(request.getOriginalAuthor())
                 .legacyId(request.getLegacyId())
                 .author(author)
-                .isPublic(request.getVisibility().equals("PUBLIC"))
+                .isPublic(visibility == Visibility.PUBLIC)
                 .createdAt(now)
                 .updatedAt(now)
                 .importedAt(request.getLegacyId() != null ? now : null)
-                .publishedAt(request.getVisibility().equals("PUBLIC") ? now : null)
+                .publishedAt(visibility == Visibility.PUBLIC ? now : null)
                 .build();
+
+        applyVisibilityMetadata(post, visibility, author);
 
         post = postRepository.save(post);
         activityLogService.logActivity(author, "POST_CREATED", "Post", post.getId(), post.getTitle());
@@ -66,16 +79,16 @@ public class PostService {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("Post not found"));
 
-        if (!post.getAuthor().getId().equals(user.getId()) && !user.getRole().equals(User.Role.ADMIN)) {
-            throw new ForbiddenException("You don't have permission to edit this post");
-        }
+        postAccessService.assertCanEdit(post, user);
+
+        Visibility targetVisibility = postAccessService.resolveVisibilityForUpdate(
+                post, request.getVisibility(), user);
 
         post.setTitle(request.getTitle());
         post.setSlug(request.getSlug());
         post.setExcerpt(request.getExcerpt());
         post.setContent(request.getContent());
         post.setTags(request.getTags());
-        post.setVisibility(Visibility.valueOf(request.getVisibility()));
         post.setCoverImageUrl(request.getCoverImageUrl());
         post.setSourceUrl(request.getSourceUrl());
 
@@ -85,12 +98,11 @@ public class PostService {
         post.setSourcePreviewImage(preview.image());
         post.setOriginalAuthor(request.getOriginalAuthor());
         post.setLegacyId(request.getLegacyId());
-        post.setPublic(request.getVisibility().equals("PUBLIC"));
 
-        // update timestamps
+        applyVisibilityChange(post, targetVisibility, user);
+
         LocalDateTime now = LocalDateTime.now();
         post.setUpdatedAt(now);
-        // if post becomes public and wasn't published before, set publishedAt
         if (post.getVisibility() == Visibility.PUBLIC && post.getPublishedAt() == null) {
             post.setPublishedAt(now);
         }
@@ -104,17 +116,17 @@ public class PostService {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("Post not found"));
 
-        if (!post.getAuthor().getId().equals(user.getId()) && !user.getRole().equals(User.Role.ADMIN)) {
-            throw new ForbiddenException("You don't have permission to delete this post");
-        }
+        postAccessService.assertCanDelete(post, user);
 
         postRepository.delete(post);
         activityLogService.logActivity(user, "POST_DELETED", "Post", post.getId(), post.getTitle());
     }
 
-    public Post getPost(String postId) {
-        return postRepository.findById(postId)
+    public Post getPost(String postId, User viewer) {
+        Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("Post not found"));
+        postAccessService.assertCanView(post, viewer);
+        return post;
     }
 
     public Page<Post> getPublicPosts(Pageable pageable) {
@@ -130,19 +142,68 @@ public class PostService {
     }
 
     public Page<Post> getPostsByTag(String tag, Pageable pageable) {
-        return postRepository.findByTag(tag, pageable);
+        return postRepository.findPublicPostsByTag(tag, pageable);
     }
 
     public Page<Post> searchPosts(String query, Pageable pageable) {
-        return postRepository.searchPosts(query, pageable);
+        return postRepository.searchPublicPosts(query, pageable);
     }
 
-    public Page<Post> getUserPosts(User user, Pageable pageable) {
-        return postRepository.findByAuthor(user, pageable);
+    public Page<Post> getUserPosts(User profileUser, User viewer, Pageable pageable) {
+        if (viewer != null && profileUser.getId().equals(viewer.getId())) {
+            return postRepository.findByAuthor(profileUser, pageable);
+        }
+        return postRepository.findByAuthorAndVisibility(profileUser, Visibility.PUBLIC, pageable);
     }
 
-    public Page<Post> getAllPosts(Pageable pageable) {
-        return postRepository.findAll(pageable);
+    public Page<Post> getAdminAccessiblePosts(Pageable pageable) {
+        return postRepository.findAdminAccessiblePosts(pageable);
+    }
+
+    private void applyVisibilityChange(Post post, Visibility targetVisibility, User editor) {
+        Visibility previous = post.getVisibility();
+
+        if (targetVisibility == Visibility.ADMIN_PRIVATE
+                && (editor.getRole() == User.Role.ADMIN || editor.getRole() == User.Role.MODERATOR)
+                && previous == Visibility.PUBLIC) {
+            postAccessService.applyStaffPrivateMetadata(post, editor);
+            return;
+        }
+
+        if (targetVisibility == Visibility.PUBLIC) {
+            post.setVisibility(Visibility.PUBLIC);
+            post.setPublic(true);
+            postAccessService.clearStaffPrivateMetadata(post);
+            return;
+        }
+
+        if (targetVisibility == Visibility.PRIVATE && editor.getRole() == User.Role.USER) {
+            postAccessService.applyUserPrivateMetadata(post);
+            return;
+        }
+
+        post.setVisibility(targetVisibility);
+        post.setPublic(targetVisibility == Visibility.PUBLIC);
+        if (targetVisibility != Visibility.ADMIN_PRIVATE) {
+            postAccessService.clearStaffPrivateMetadata(post);
+        }
+    }
+
+    private void applyVisibilityMetadata(Post post, Visibility visibility, User author) {
+        if (visibility == Visibility.ADMIN_PRIVATE
+                && (author.getRole() == User.Role.ADMIN || author.getRole() == User.Role.MODERATOR)) {
+            postAccessService.applyStaffPrivateMetadata(post, author);
+        } else if (visibility == Visibility.PRIVATE) {
+            postAccessService.applyUserPrivateMetadata(post);
+        }
+    }
+
+    private Visibility parseVisibility(String value) {
+        try {
+            return Visibility.valueOf(value.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new BadRequestException("Invalid visibility value: " + value);
+        }
     }
 
     private LinkPreviewData resolvePreview(PostRequest request) {
