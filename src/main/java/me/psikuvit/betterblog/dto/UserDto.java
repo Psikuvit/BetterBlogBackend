@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import me.psikuvit.betterblog.entity.User;
 
 @Data
 @NoArgsConstructor
@@ -15,6 +16,7 @@ public class UserDto {
     private String username;
     private String email;
     private String profilePictureUrl;
+    private User.Role role;
     private String bio;
     private boolean enabled;
 }

@@ -39,8 +39,23 @@ public class UserController {
     public ResponseEntity<Page<Post>> getUserPosts(
             @PathVariable String username,
             Pageable pageable) {
-        User user = authService.getUserEntityByUsername(username);
-        return ResponseEntity.ok(postService.getUserPosts(user, pageable));
+        User profileUser = authService.getUserEntityByUsername(username);
+        return ResponseEntity.ok(postService.getUserPosts(profileUser, getOptionalUser(), pageable));
+    }
+
+    private User getOptionalUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null
+                || !auth.isAuthenticated()
+                || !(auth.getPrincipal() instanceof org.springframework.security.core.userdetails.User)) {
+            return null;
+        }
+
+        try {
+            return authService.getUserEntityByUsername(auth.getName());
+        } catch (Exception ex) {
+            return null;
+        }
     }
 }
 
