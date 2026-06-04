@@ -8,6 +8,7 @@ import me.psikuvit.betterblog.exception.BadRequestException;
 import me.psikuvit.betterblog.repository.UserRepository;
 import me.psikuvit.betterblog.repository.PostRepository;
 import me.psikuvit.betterblog.service.ActivityLogService;
+import me.psikuvit.betterblog.service.PostService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -31,6 +32,7 @@ public class AdminController {
     private final UserRepository userRepository;
     private final PostRepository postRepository;
     private final ActivityLogService activityLogService;
+    private final PostService postService;
 
     @GetMapping("/stats")
     public ResponseEntity<Map<String, Object>> getStats() {
@@ -49,6 +51,28 @@ public class AdminController {
         stats.put("adminsCount", userRepository.countByRole(User.Role.ADMIN));
 
         return ResponseEntity.ok(stats);
+    }
+
+    @GetMapping("/posts")
+    public ResponseEntity<Page<Post>> getAllPosts(
+            @RequestParam(required = false) String visibility,
+            Pageable pageable) {
+        User currentUser = getCurrentAdmin();
+
+        if (!currentUser.getRole().equals(User.Role.ADMIN)) {
+            return ResponseEntity.status(403).build();
+        }
+
+        if (hasText(visibility)) {
+            try {
+                Post.Visibility vis = Post.Visibility.valueOf(visibility.trim().toUpperCase(Locale.ROOT));
+                return ResponseEntity.ok(postService.getPostsByVisibility(vis, pageable));
+            } catch (IllegalArgumentException ex) {
+                throw new BadRequestException("Invalid visibility value: " + visibility);
+            }
+        }
+
+        return ResponseEntity.ok(postService.getAllPosts(pageable));
     }
 
     @GetMapping("/users")

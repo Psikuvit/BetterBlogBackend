@@ -141,6 +141,10 @@ public class PostService {
         return postRepository.findByAuthor(user, pageable);
     }
 
+    public Page<Post> getAllPosts(Pageable pageable) {
+        return postRepository.findAll(pageable);
+    }
+
     private LinkPreviewData resolvePreview(PostRequest request) {
         if (request.getSourceUrl() == null || request.getSourceUrl().isBlank()) {
             return new LinkPreviewData(
