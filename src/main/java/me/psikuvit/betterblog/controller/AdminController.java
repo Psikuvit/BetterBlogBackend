@@ -1,10 +1,15 @@
 package me.psikuvit.betterblog.controller;
 
 import lombok.RequiredArgsConstructor;
+import me.psikuvit.betterblog.dto.ModeratorDto;
+import me.psikuvit.betterblog.dto.ModeratorsResponse;
 import me.psikuvit.betterblog.entity.ActivityLog;
 import me.psikuvit.betterblog.entity.Post;
 import me.psikuvit.betterblog.entity.User;
 import me.psikuvit.betterblog.exception.BadRequestException;
+import me.psikuvit.betterblog.exception.ForbiddenException;
+import me.psikuvit.betterblog.exception.ResourceNotFoundException;
+import me.psikuvit.betterblog.exception.UnauthorizedException;
 import me.psikuvit.betterblog.repository.UserRepository;
 import me.psikuvit.betterblog.repository.PostRepository;
 import me.psikuvit.betterblog.service.ActivityLogService;
@@ -17,6 +22,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +58,35 @@ public class AdminController {
         stats.put("adminsCount", userRepository.countByRole(User.Role.ADMIN));
 
         return ResponseEntity.ok(stats);
+    }
+
+    @GetMapping("/moderators")
+    public ResponseEntity<ModeratorsResponse> getModerators() {
+        requireAdmin();
+
+        List<ModeratorDto> moderators = userRepository.findByRole(User.Role.MODERATOR).stream()
+                .map(ModeratorDto::fromUser)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(ModeratorsResponse.builder().moderators(moderators).build());
+    }
+
+    @DeleteMapping("/moderators/{id}")
+    public ResponseEntity<Void> removeModerator(@PathVariable String id) {
+        requireAdmin();
+
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (user.getRole() != User.Role.MODERATOR) {
+            throw new BadRequestException("User is not a moderator");
+        }
+
+        user.setRole(User.Role.USER);
+        clearModeratorMetadata(user);
+        userRepository.save(user);
+
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/posts")
@@ -119,11 +155,24 @@ public class AdminController {
 
         User user = userRepository.findById(id).orElse(null);
         if (user != null && request != null && hasText(request.get("role"))) {
+            User.Role newRole;
             try {
-                user.setRole(User.Role.valueOf(request.get("role").trim().toUpperCase(Locale.ROOT)));
+                newRole = User.Role.valueOf(request.get("role").trim().toUpperCase(Locale.ROOT));
             } catch (IllegalArgumentException ex) {
                 throw new BadRequestException("Invalid role value: " + request.get("role"));
             }
+
+            if (newRole == User.Role.MODERATOR && user.getRole() != User.Role.MODERATOR) {
+                user.setModeratorAssignedAt(LocalDateTime.now());
+                user.setModeratorAssignedBy(currentUser.getUsername());
+                if (user.getModeratorPermissions() == null) {
+                    user.setModeratorPermissions(new ArrayList<>());
+                }
+            } else if (user.getRole() == User.Role.MODERATOR && newRole != User.Role.MODERATOR) {
+                clearModeratorMetadata(user);
+            }
+
+            user.setRole(newRole);
             userRepository.save(user);
         }
 
@@ -163,11 +212,25 @@ public class AdminController {
     private User getCurrentAdmin() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated()) {
-            throw new BadRequestException("User is not authenticated");
+            throw new UnauthorizedException("User is not authenticated");
         }
 
         return userRepository.findByUsername(auth.getName())
                 .orElseThrow(() -> new BadRequestException("User not found: " + auth.getName()));
+    }
+
+    private User requireAdmin() {
+        User currentUser = getCurrentAdmin();
+        if (!currentUser.getRole().equals(User.Role.ADMIN)) {
+            throw new ForbiddenException("Admin access required");
+        }
+        return currentUser;
+    }
+
+    private void clearModeratorMetadata(User user) {
+        user.setModeratorPermissions(new ArrayList<>());
+        user.setModeratorAssignedAt(null);
+        user.setModeratorAssignedBy(null);
     }
 
     private boolean hasText(String value) {

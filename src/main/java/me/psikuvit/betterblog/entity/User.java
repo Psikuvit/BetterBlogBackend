@@ -10,6 +10,8 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Document(collection = "users")
 @Data
@@ -45,6 +47,13 @@ public class User {
 
     @Builder.Default
     private Role role = Role.USER;
+
+    @Builder.Default
+    private List<String> moderatorPermissions = new ArrayList<>();
+
+    private LocalDateTime moderatorAssignedAt;
+
+    private String moderatorAssignedBy;
 
     private String preferences;
 
