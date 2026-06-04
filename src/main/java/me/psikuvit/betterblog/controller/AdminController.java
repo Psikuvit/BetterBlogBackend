@@ -1,8 +1,12 @@
 package me.psikuvit.betterblog.controller;
 
 import lombok.RequiredArgsConstructor;
+import me.psikuvit.betterblog.dto.AppSettingsDto;
 import me.psikuvit.betterblog.dto.ModeratorDto;
 import me.psikuvit.betterblog.dto.ModeratorsResponse;
+import me.psikuvit.betterblog.dto.UpdateAppSettingsRequest;
+import jakarta.validation.Valid;
+import me.psikuvit.betterblog.service.AppSettingsService;
 import me.psikuvit.betterblog.entity.ActivityLog;
 import me.psikuvit.betterblog.entity.Post;
 import me.psikuvit.betterblog.entity.User;
@@ -40,6 +44,7 @@ public class AdminController {
     private final PostRepository postRepository;
     private final ActivityLogService activityLogService;
     private final PostService postService;
+    private final AppSettingsService appSettingsService;
 
     @GetMapping("/stats")
     public ResponseEntity<Map<String, Object>> getStats() {
@@ -54,6 +59,7 @@ public class AdminController {
         stats.put("totalPosts", postRepository.count());
         stats.put("totalPublicPosts", postRepository.countByVisibility(Post.Visibility.PUBLIC));
         stats.put("totalPrivatePosts", postRepository.countByVisibility(Post.Visibility.PRIVATE));
+        stats.put("totalStaffPrivatePosts", postRepository.countByVisibility(Post.Visibility.ADMIN_PRIVATE));
         stats.put("moderatorsCount", userRepository.countByRole(User.Role.MODERATOR));
         stats.put("adminsCount", userRepository.countByRole(User.Role.ADMIN));
 
@@ -100,15 +106,33 @@ public class AdminController {
         }
 
         if (hasText(visibility)) {
+            Post.Visibility vis;
             try {
-                Post.Visibility vis = Post.Visibility.valueOf(visibility.trim().toUpperCase(Locale.ROOT));
-                return ResponseEntity.ok(postService.getPostsByVisibility(vis, pageable));
+                vis = Post.Visibility.valueOf(visibility.trim().toUpperCase(Locale.ROOT));
             } catch (IllegalArgumentException ex) {
                 throw new BadRequestException("Invalid visibility value: " + visibility);
             }
+            if (vis == Post.Visibility.PRIVATE) {
+                throw new BadRequestException("User-private posts cannot be listed by admins");
+            }
+            if (vis == Post.Visibility.PUBLIC || vis == Post.Visibility.ADMIN_PRIVATE) {
+                return ResponseEntity.ok(postService.getPostsByVisibility(vis, pageable));
+            }
         }
 
-        return ResponseEntity.ok(postService.getAllPosts(pageable));
+        return ResponseEntity.ok(postService.getAdminAccessiblePosts(pageable));
+    }
+
+    @GetMapping("/settings")
+    public ResponseEntity<AppSettingsDto> getSettings() {
+        requireAdmin();
+        return ResponseEntity.ok(appSettingsService.getSettings());
+    }
+
+    @PatchMapping("/settings")
+    public ResponseEntity<AppSettingsDto> updateSettings(@Valid @RequestBody UpdateAppSettingsRequest request) {
+        User admin = requireAdmin();
+        return ResponseEntity.ok(appSettingsService.updateSettings(request, admin));
     }
 
     @GetMapping("/users")
