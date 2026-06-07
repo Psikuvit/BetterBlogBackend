@@ -5,13 +5,13 @@ import lombok.RequiredArgsConstructor;
 import me.psikuvit.betterblog.dto.PostReportDto;
 import me.psikuvit.betterblog.dto.PostReportRequest;
 import me.psikuvit.betterblog.dto.PostRequest;
-import me.psikuvit.betterblog.service.PostReportService;
 import me.psikuvit.betterblog.entity.Post;
 import me.psikuvit.betterblog.entity.User;
 import me.psikuvit.betterblog.exception.BadRequestException;
 import me.psikuvit.betterblog.exception.UnauthorizedException;
 import me.psikuvit.betterblog.service.AuthService;
 import me.psikuvit.betterblog.service.LinkPreviewService;
+import me.psikuvit.betterblog.service.PostReportService;
 import me.psikuvit.betterblog.service.PostService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -27,7 +27,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 @RestController
@@ -100,7 +99,7 @@ public class PostController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/preview")
+    @GetMapping("/preview")
     public ResponseEntity<Map<String, Object>> previewUrl(@RequestParam String url) {
         Map<String, Object> result = new HashMap<>();
         result.put("preview", linkPreviewService.fetchPreview(url));
