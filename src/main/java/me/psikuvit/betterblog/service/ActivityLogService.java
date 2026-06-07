@@ -10,6 +10,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -30,6 +32,7 @@ public class ActivityLogService {
                 .resourceName(resourceName)
                 .details(details)
                 .severity(severity)
+                .createdAt(LocalDateTime.now())
                 .build();
 
         activityLogRepository.save(log);

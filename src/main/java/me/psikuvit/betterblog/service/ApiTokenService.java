@@ -31,6 +31,7 @@ public class ApiTokenService {
                 .name(request.getName())
                 .token(token)
                 .scopes(request.getScopes())
+                .createdAt(LocalDateTime.now())
                 .expiresAt(expiresAt)
                 .build();
 

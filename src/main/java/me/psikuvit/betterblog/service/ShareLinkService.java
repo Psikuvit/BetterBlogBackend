@@ -43,6 +43,7 @@ public class ShareLinkService {
                 .token(token)
                 .expiresAt(expiresAt)
                 .maxAccess(request.getMaxAccess())
+                .createdAt(LocalDateTime.now())
                 .build();
 
         link = shareLinkRepository.save(link);
