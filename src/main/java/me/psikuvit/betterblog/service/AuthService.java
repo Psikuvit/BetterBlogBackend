@@ -151,14 +151,7 @@ public class AuthService {
                 .refreshToken(refreshToken)
                 .tokenType("Bearer")
                 .expiresIn(expiresIn)
-                .user(UserDto.builder()
-                        .id(user.getId())
-                        .username(user.getUsername())
-                        .email(user.getEmail())
-                        .profilePictureUrl(user.getProfilePictureUrl())
-                        .bio(user.getBio())
-                        .enabled(user.isEnabled())
-                        .build())
+                .user(mapToUserDto(user))
                 .build();
     }
 
@@ -172,6 +165,7 @@ public class AuthService {
                 .email(user.getEmail())
                 .profilePictureUrl(user.getProfilePictureUrl())
                 .bio(user.getBio())
+                .role(user.getRole())
                 .enabled(user.isEnabled())
                 .build();
     }
