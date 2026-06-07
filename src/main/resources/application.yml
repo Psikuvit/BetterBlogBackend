@@ -20,6 +20,8 @@ cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:8080}
 
 app:
+  posts:
+    default-max-per-user: 50
   resend:
     api-key: ${RESEND_API_KEY:}
   mail:
