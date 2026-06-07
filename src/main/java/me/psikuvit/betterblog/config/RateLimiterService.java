@@ -25,6 +25,9 @@ public class RateLimiterService {
     // Rate limit: 5 requests per hour per IP for password reset requests
     private static final int PASSWORD_RESET_REQUESTS_PER_HOUR = 5;
 
+    // Rate limit: 60 refreshes per hour per IP
+    private static final int REFRESH_REQUESTS_PER_HOUR = 60;
+
     /**
      * Get or create bucket for login rate limiting (10 req/min)
      */
@@ -60,16 +63,20 @@ public class RateLimiterService {
         return getRegisterBucket(key).tryConsume(1);
     }
 
-    /**
-     * Check if password reset request is allowed and consume a token
+        /**
+     * Get or create bucket for refresh token usage (60 req/hour)
      */
-    public boolean allowPasswordResetRequest(String key) {
-        return getPasswordResetBucket(key).tryConsume(1);
+    public Bucket getRefreshBucket(String key) {
+        return cache.computeIfAbsent("refresh_" + key, k -> createRefreshBucket());
     }
 
     /**
-     * Create login bucket: 10 requests per minute
+     * Check if refresh is allowed and consume a token
      */
+    public boolean allowRefresh(String key) {
+        return getRefreshBucket(key).tryConsume(1);
+    }
+
     private Bucket createLoginBucket() {
         Bandwidth limit = Bandwidth.classic(LOGIN_REQUESTS_PER_MINUTE, Refill.intervally(LOGIN_REQUESTS_PER_MINUTE, Duration.ofMinutes(1)));
         return Bucket.builder()
@@ -92,6 +99,16 @@ public class RateLimiterService {
      */
     private Bucket createPasswordResetBucket() {
         Bandwidth limit = Bandwidth.classic(PASSWORD_RESET_REQUESTS_PER_HOUR, Refill.intervally(PASSWORD_RESET_REQUESTS_PER_HOUR, Duration.ofHours(1)));
+        return Bucket.builder()
+                .addLimit(limit)
+                .build();
+    }
+
+    /**
+     * Create refresh bucket: 60 requests per hour
+     */
+    private Bucket createRefreshBucket() {
+        Bandwidth limit = Bandwidth.classic(REFRESH_REQUESTS_PER_HOUR, Refill.intervally(REFRESH_REQUESTS_PER_HOUR, Duration.ofHours(1)));
         return Bucket.builder()
                 .addLimit(limit)
                 .build();
