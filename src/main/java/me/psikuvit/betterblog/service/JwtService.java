@@ -30,20 +30,20 @@ public class JwtService {
      * Generate access token for a user
      */
     public String generateAccessToken(String username) {
-        return generateToken(username, jwtExpiration);
+        return generateToken(username, jwtExpiration, "access");
     }
 
     /**
      * Generate refresh token for a user
      */
     public String generateRefreshToken(String username) {
-        return generateToken(username, refreshTokenExpiration);
+        return generateToken(username, refreshTokenExpiration, "refresh");
     }
 
     /**
      * Generate JWT token with custom expiration
      */
-    private String generateToken(String username, long expiration) {
+    private String generateToken(String username, long expiration, String tokenType) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expiration);
 
@@ -53,6 +53,7 @@ public class JwtService {
                 .withIssuedAt(now)
                 .withExpiresAt(expiryDate)
                 .withClaim("username", username)
+                .withClaim("token_type", tokenType)
                 .sign(Algorithm.HMAC512(jwtSecret));
     }
 
@@ -80,6 +81,30 @@ public class JwtService {
              throw new UnauthorizedException("Invalid or expired token: " + e.getMessage());
          }
      }
+
+    /**
+     * Validate and decode an access token (token_type = "access")
+     */
+    public DecodedJWT validateAccessToken(String token) {
+        DecodedJWT decodedJWT = validateToken(token);
+        String type = decodedJWT.getClaim("token_type").asString();
+        if (!"access".equals(type)) {
+            throw new UnauthorizedException("Invalid token type for access");
+        }
+        return decodedJWT;
+    }
+
+    /**
+     * Validate and decode a refresh token (token_type = "refresh")
+     */
+    public DecodedJWT validateRefreshToken(String token) {
+        DecodedJWT decodedJWT = validateToken(token);
+        String type = decodedJWT.getClaim("token_type").asString();
+        if (!"refresh".equals(type)) {
+            throw new UnauthorizedException("Invalid token type for refresh");
+        }
+        return decodedJWT;
+    }
 
     /**
      * Extract username from token

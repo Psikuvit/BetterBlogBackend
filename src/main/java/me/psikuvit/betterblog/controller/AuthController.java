@@ -17,6 +17,7 @@ import me.psikuvit.betterblog.service.AuthService;
 import me.psikuvit.betterblog.service.JwtService;
 import me.psikuvit.betterblog.service.PasswordResetService;
 import me.psikuvit.betterblog.service.TokenBlacklistService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -35,6 +36,9 @@ public class AuthController {
     private final RateLimiterService rateLimiterService;
     private final PasswordResetService passwordResetService;
     private final TokenBlacklistService tokenBlacklistService;
+
+    @Value("${app.trust-proxy-headers:false}")
+    private boolean trustProxyHeaders;
 
     /**
      * Register a new user
@@ -116,9 +120,16 @@ public class AuthController {
      */
     @PostMapping("/refresh")
     public ResponseEntity<AuthResponse> refreshToken(
-            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            HttpServletRequest httpRequest) {
         if (!StringUtils.hasText(authHeader) || !authHeader.startsWith("Bearer ")) {
             return ResponseEntity.badRequest().build();
+        }
+
+        String clientIp = getClientIp(httpRequest);
+        if (!rateLimiterService.allowRefresh(clientIp)) {
+            throw new RateLimitExceededException(
+                    "Too many refresh attempts. Please try again later.", 3600);
         }
 
         String refreshToken = authHeader.substring("Bearer ".length());
@@ -195,16 +206,18 @@ public class AuthController {
      * Extract client IP address from request
      */
     private String getClientIp(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (StringUtils.hasText(xForwardedFor)) {
-            return xForwardedFor.split(",")[0].trim();
+        if (trustProxyHeaders) {
+            String xForwardedFor = request.getHeader("X-Forwarded-For");
+            if (StringUtils.hasText(xForwardedFor)) {
+                return xForwardedFor.split(",")[0].trim();
+            }
+
+            String xRealIp = request.getHeader("X-Real-IP");
+            if (StringUtils.hasText(xRealIp)) {
+                return xRealIp;
+            }
         }
-        
-        String xRealIp = request.getHeader("X-Real-IP");
-        if (StringUtils.hasText(xRealIp)) {
-            return xRealIp;
-        }
-        
+
         return request.getRemoteAddr();
     }
 }

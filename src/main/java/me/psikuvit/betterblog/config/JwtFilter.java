@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import me.psikuvit.betterblog.exception.UnauthorizedException;
 import me.psikuvit.betterblog.service.JwtService;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import org.jspecify.annotations.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -38,7 +39,8 @@ public class JwtFilter extends OncePerRequestFilter {
 
             if (StringUtils.hasText(token)) {
                 try {
-                    String username = jwtService.getUsernameFromToken(token);
+                    DecodedJWT decoded = jwtService.validateAccessToken(token);
+                    String username = decoded.getSubject();
 
                     if (StringUtils.hasText(username) && SecurityContextHolder.getContext().getAuthentication() == null) {
                         UserDetails userDetails = userDetailsService.loadUserByUsername(username);

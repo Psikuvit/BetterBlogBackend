@@ -5,6 +5,7 @@ import me.psikuvit.betterblog.dto.AuthResponse;
 import me.psikuvit.betterblog.dto.LoginRequest;
 import me.psikuvit.betterblog.dto.RegisterRequest;
 import me.psikuvit.betterblog.dto.UserDto;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import me.psikuvit.betterblog.entity.User;
 import me.psikuvit.betterblog.exception.AlreadyExistsException;
 import me.psikuvit.betterblog.exception.BadRequestException;
@@ -107,7 +108,8 @@ public class AuthService {
             throw new UnauthorizedException("Refresh token has been revoked");
         }
 
-        String username = jwtService.getUsernameFromToken(refreshToken);
+        DecodedJWT decoded = jwtService.validateRefreshToken(refreshToken);
+        String username = decoded.getSubject();
 
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
@@ -115,6 +117,9 @@ public class AuthService {
         if (!user.isEnabled()) {
             throw new UnauthorizedException("User account is disabled");
         }
+
+        // Revoke the used refresh token
+        tokenBlacklistService.revokeToken(refreshToken);
 
         // Generate new access token and refresh token
         String newAccessToken = jwtService.generateAccessToken(user.getUsername());

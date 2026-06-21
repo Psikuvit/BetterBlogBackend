@@ -1,9 +1,9 @@
 package me.psikuvit.betterblog.config;
 
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-// ...existing imports...
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.util.ContentCachingRequestWrapper;
 import org.springframework.web.util.ContentCachingResponseWrapper;
@@ -23,7 +23,7 @@ public class RequestResponseLoggingFilter extends OncePerRequestFilter {
     private static final int MAX_PAYLOAD_LENGTH = 1024;
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+    protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
         // buffer up to 10KB of request payload for logging
