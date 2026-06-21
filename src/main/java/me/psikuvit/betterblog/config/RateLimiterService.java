@@ -63,7 +63,14 @@ public class RateLimiterService {
         return getRegisterBucket(key).tryConsume(1);
     }
 
-        /**
+    /**
+     * Check if password reset is allowed and consume a token
+     */
+    public boolean allowPasswordResetRequest(String key) {
+        return getPasswordResetBucket(key).tryConsume(1);
+    }
+
+    /**
      * Get or create bucket for refresh token usage (60 req/hour)
      */
     public Bucket getRefreshBucket(String key) {

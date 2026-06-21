@@ -160,20 +160,18 @@ public class AuthController {
      */
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(
-            @RequestHeader(value = "Authorization", required = false) String authHeader,
-            @RequestBody(required = false) String body) {
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
         if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring("Bearer ".length());
             try {
-                tokenBlacklistService.revokeToken(token);
-            } catch (Exception ignored) {
-            }
-        }
+                Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+                String currentUsername = (authentication != null) ? authentication.getName() : null;
 
-        if (!StringUtils.hasText(authHeader) && StringUtils.hasText(body)) {
-            String token = body.trim();
-            try {
-                tokenBlacklistService.revokeToken(token);
+                String tokenUsername = jwtService.getUsernameFromToken(token);
+
+                if (currentUsername == null || currentUsername.equals(tokenUsername)) {
+                    tokenBlacklistService.revokeToken(token);
+                }
             } catch (Exception ignored) {
             }
         }
